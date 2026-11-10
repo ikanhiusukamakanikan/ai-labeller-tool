@@ -1,0 +1,11 @@
+{
+    "labels": [
+        "SAMPAH",
+        "LUBANG",
+        "KARATAN",
+        "RETAKAN"
+    ],
+    "threshold": 0.5,
+    "max_length": 128,
+    "base_model": "indolem/indobert-base-uncased"
+}

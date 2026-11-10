@@ -6,8 +6,8 @@ import streamlit as st
 from pydantic import ValidationError
 
 
-st.set_page_config(page_title="AI Labeler", page_icon="🏷️", layout="centered")
-st.title("AI Labeler")
+st.set_page_config(page_title="AI Labeler - IndoBERT", page_icon="🏷️", layout="centered")
+st.title("AI Labeler - IndoBERT")
 st.caption("Labeli laporan: SAMPAH, LUBANG, KARATAN, dan RETAKAN.")
 
 with st.form("prediction"):
@@ -31,4 +31,4 @@ if submitted:
         )
         st.json(result.model_dump())
 
-st.markdown("Integrasi aplikasi: `POST /predict`. [Dokumentasi API](/docs)")
+st.markdown("Integrasi REST: [Dokumentasi API](docs). Di Community Cloud, gunakan prefix `/~/+` pada URL publik.")

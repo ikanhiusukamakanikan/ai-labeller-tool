@@ -50,7 +50,7 @@ async def health(_request):
 
 OPENAPI = {
     "openapi": "3.1.0",
-    "info": {"title": "TF-IDF Labeler API", "version": "1.0.0"},
+    "info": {"title": "IndoBERT Labeler API", "version": "1.0.0"},
     "paths": {
         "/predict": {"post": {
             "summary": "Predict report labels",
@@ -79,14 +79,16 @@ async def openapi(_request):
 
 async def docs(_request):
     return HTMLResponse("""<!doctype html><html lang="id"><meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1"><title>TF-IDF API</title>
+<meta name="viewport" content="width=device-width,initial-scale=1"><title>IndoBERT API</title>
 <body style="max-width:760px;margin:48px auto;padding:0 20px;font:16px/1.6 system-ui">
-<h1>TF-IDF Labeler API</h1><p><b>POST /predict</b> · Content-Type: application/json</p>
+<h1>IndoBERT Labeler API</h1><p><b>POST /predict</b> · Content-Type: application/json</p>
 <pre>{"text":"jalan berlubang dan banyak sampah","threshold":0.5}</pre>
 <p>Hasil berisi <code>labels</code>, <code>probabilities</code>, dan <code>threshold</code>.
 Threshold opsional, bawaan 0.5. Teks harus berisi 1–20.000 karakter setelah trim;
 threshold harus lebih dari 0 hingga 1. Input tidak valid: HTTP 422.</p>
-<p><a href="/openapi.json">OpenAPI JSON</a> · <a href="/health">Health</a> ·
+<p>Di Community Cloud, gunakan prefix <code>/~/+</code> pada URL publik,
+misalnya <code>https://NAMA-APP.streamlit.app/~/+/predict</code>.</p>
+<p><a href="openapi.json">OpenAPI JSON</a> · <a href="health">Health</a> ·
 <a href="/">Coba model di Streamlit</a></p></body></html>""")
 
 

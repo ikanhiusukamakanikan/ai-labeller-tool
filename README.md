@@ -1,99 +1,165 @@
-# TF-IDF REST API di Streamlit Community Cloud
+# IndoBERT REST API di Streamlit Community Cloud
 
-Paket mandiri tanpa Docker dan tanpa Hugging Face Spaces. Memakai **Streamlit
-1.67.0** dan public API `st.App(routes=...)` untuk menyediakan dashboard dan
-endpoint REST pada **port yang sama**. Tidak membuka server FastAPI di port lain.
+Versi Streamlit dari **`huggingface-space/`**, memakai bobot
+`indobert-labeler/model.int8.onnx` dan tokenizer/config yang sama. Model dasar
+adalah `indolem/indobert-base-uncased`. Ini IndoBERT ONNX INT8, bukan model Lite
+atau TF-IDF. Paket mandiri ini tidak memerlukan Docker, PyTorch, Transformers,
+training, atau konversi model saat startup.
 
-Sudah diuji lokal: **12 tes integrasi lulus** dan startup asli
-`streamlit run app.py` berhasil melayani UI, `/health`, dan `POST /predict` pada
-port yang sama. Bobot dan probabilitas tetap cocok dengan model TF-IDF asal.
-Deploy di Community Cloud pengguna belum dilakukan.
+Dashboard dan REST memakai Streamlit 1.67 `st.App`, dengan kontrak
+`POST /predict` yang sama seperti versi TF-IDF. Bobot, normalisasi lowercase/trim,
+urutan label, threshold default 0.5, serta batas 128 token mengikuti paket asal.
 
-Streamlit menambahkan dukungan ASGI/custom HTTP melalui `st.App` pada 1.53 dan
-menjadikan Starlette/Uvicorn server bawaan pada 1.57. Tutorial lama yang menyatakan
-Streamlit tidak dapat menyediakan REST API tidak menggambarkan kemampuan versi
-yang dipin paket ini. Lihat [release notes resmi](https://docs.streamlit.io/develop/quick-reference/release-notes/2026).
+Verifikasi lokal: **14 tes integrasi lulus** memakai bobot ONNX asli. Hash seluruh
+lima file model/tokenizer cocok dengan sumber `huggingface-space/`, dan probabilitas
+pada fixture pendek maupun teks terpotong cocok dengan inferensi langsung model
+sumber. Startup CLI `streamlit run app.py` juga berhasil mengembalikan JSON
+`SAMPAH` dan `LUBANG` untuk contoh laporan jalan berlubang dan banyak sampah.
+Pemeriksaan dependency lulus. Ini pengujian lokal; deployment Cloud belum dilakukan.
 
-## Deploy ke Community Cloud
+## Isi paket
 
-1. Upload isi folder ini ke repository GitHub yang dapat diakses akun Streamlit.
-   File yang diperlukan: `app.py`, `dashboard.py`, `engine.py`, `model.joblib`,
-   `requirements.txt`, dan `.streamlit/config.toml`.
-2. Buka [Streamlit Community Cloud](https://share.streamlit.io/), pilih **Create app**,
-   lalu pilih repository dan branch.
-3. Entrypoint **harus `app.py`**, bukan `dashboard.py`. Jika folder ini masih
-   bersarang di repository, pilih `streamlit-tfidf-api/app.py` dan pastikan
-   `requirements.txt` serta `.streamlit/` tetap berada di sebelah entrypoint.
-4. Pada Advanced settings, pilih **Python 3.12**, lalu deploy.
-5. Agar aplikasi lain dapat memanggil API tanpa login browser, gunakan visibility
-   aplikasi yang sesuai untuk akses publik. Repository dan aplikasi tidak harus
-   dipublikasikan oleh script; pengaturan akses dilakukan pemilik akun.
-6. Setelah startup, uji `https://NAMA-APP.streamlit.app/health`, lalu `/predict`.
+```text
+app.py                         entrypoint server Streamlit dan route REST
+dashboard.py                   UI pengujian, berbagi model/cache dengan REST
+engine.py                      runtime IndoBERT ONNX INT8
+requirements.txt
+.gitattributes                 konfigurasi Git LFS untuk ONNX
+.streamlit/config.toml
+indobert-labeler/
+    config.json
+    label_config.json
+    tokenizer.json
+    tokenizer_config.json
+    model.int8.onnx
+```
 
-Paket tidak memerlukan HF token, server lokal tambahan, atau Dockerfile.
-Bobot model dan cache probabilitas sama dengan paket TF-IDF sebelumnya.
+## Upload bobot dengan Git LFS
 
-## Kontrak REST
+Bobot ONNX berukuran **111.733.466 byte (sekitar 106,6 MiB)**, melewati batas
+100 MiB untuk file Git biasa. Upload lewat halaman web GitHub juga dibatasi
+25 MiB per file. Gunakan **Git LFS**; Community Cloud mendukung repository LFS.
 
-```http
-POST /predict
-Content-Type: application/json
+Untuk repository deployment baru, ekstrak isi ZIP paket ke folder kerja baru,
+buka terminal pada folder tersebut, lalu gunakan alur berikut. Ganti URL remote
+dengan repository GitHub tujuan yang sudah dibuat:
 
+```powershell
+git init
+git lfs install --local
+git lfs track "*.onnx"
+git add .gitattributes .gitignore .streamlit README.md requirements.txt app.py dashboard.py engine.py indobert-labeler
+git commit -m "Add Streamlit IndoBERT ONNX API"
+git branch -M main
+git remote add origin https://github.com/USERNAME/REPOSITORY.git
+git push -u origin main
+git lfs ls-files
+```
+
+Pastikan model masuk daftar `git lfs ls-files`. Contoh ini untuk repository baru;
+sesuaikan alur Git jika repository tujuan sudah berisi commit. Pastikan konten
+file model di checkout deployment benar-benar terunduh, bukan pointer LFS kecil.
+Runtime memberi pesan khusus jika yang ditemukan hanya pointer LFS.
+
+Rujukan: [batas file GitHub](https://docs.github.com/en/repositories/working-with-files/managing-large-files/about-large-files-on-github),
+[dukungan Git LFS Community Cloud](https://docs.streamlit.io/deploy/streamlit-community-cloud/deploy-your-app/file-organization).
+
+## Deploy ke Streamlit Community Cloud
+
+1. Pakai repository deployment yang memuat seluruh isi paket ini, termasuk bobot
+   ONNX melalui Git LFS. Tidak perlu mengganti deployment TF-IDF yang sudah berjalan.
+2. Di Community Cloud pilih **Create app**, repository/branch, dan entrypoint
+   **`app.py`**, bukan `dashboard.py`.
+3. Buka **Advanced settings → Python version → 3.12 → Save**, lalu **Deploy**.
+   Periksa log untuk memastikan `Using Python 3.12...`. Versi interpreter tidak
+   dipilih oleh `requirements.txt`.
+4. Pilih subdomain untuk varian IndoBERT, lalu uji endpoint backend di bawah.
+   Pengaturan visibility harus mengizinkan akses yang dibutuhkan aplikasi pemanggil.
+
+Jika paket tetap diletakkan dalam subfolder repository, pilih
+`streamlit-indobert-api/app.py` sebagai entrypoint, letakkan dependency file di
+sebelah entrypoint, dan letakkan konfigurasi `.streamlit/config.toml` pada root
+repository sesuai [aturan organisasi file Community Cloud](https://docs.streamlit.io/deploy/streamlit-community-cloud/deploy-your-app/file-organization).
+
+Jika app terlanjur memakai versi Python lain, Community Cloud memerlukan
+deployment dibuat ulang untuk mengganti interpreter. Catat subdomain, repository,
+branch, entrypoint, dan secrets sebelum mengganti deployment.
+[Petunjuk resmi versi Python](https://docs.streamlit.io/deploy/streamlit-community-cloud/manage-your-app/upgrade-python).
+
+## Endpoint publik dan format request
+
+Pada routing Community Cloud yang sudah diverifikasi pada varian TF-IDF, backend
+memakai prefix `/~/+`. Ganti `NAMA-APP-INDOBERT` dengan subdomain deployment baru:
+
+```text
+POST https://NAMA-APP-INDOBERT.streamlit.app/~/+/predict
+GET  https://NAMA-APP-INDOBERT.streamlit.app/~/+/health
+GET  https://NAMA-APP-INDOBERT.streamlit.app/~/+/docs
+GET  https://NAMA-APP-INDOBERT.streamlit.app/~/+/openapi.json
+```
+
+Alamat tanpa `/~/+` dapat mengembalikan halaman HTML Cloud. Prefix ini berasal
+dari proxy platform; periksa kembali routing jika layanan hosting mengubahnya.
+Route Python dan URL localhost tetap `/predict`, `/health`, dan seterusnya.
+
+```json
 {"text":"jalan berlubang dan banyak sampah","threshold":0.5}
 ```
 
-Hasil berisi `labels`, `probabilities`, dan `threshold`. Threshold opsional,
-default `0.5`. Teks dinormalisasi dengan lowercase dan trim. Teks kosong atau
-lebih dari 20.000 karakter, threshold di luar `0 < threshold <= 1`, dan JSON
-tidak valid menghasilkan HTTP `422`.
+Response JSON berisi `labels`, `probabilities`, dan `threshold`. Label tersedia:
+`SAMPAH`, `LUBANG`, `KARATAN`, `RETAKAN`. Threshold opsional; teks harus 1–20.000
+karakter setelah trim, dan threshold harus `0 < threshold <= 1`. Teks dipotong
+sampai 128 token sesuai konfigurasi asli. Input tidak valid menghasilkan HTTP 422.
 
 ```powershell
-Invoke-RestMethod -Uri https://NAMA-APP.streamlit.app/predict -Method Post -ContentType 'application/json' -Body '{"text":"jalan berlubang dan banyak sampah"}'
+Invoke-RestMethod -Uri https://NAMA-APP-INDOBERT.streamlit.app/~/+/predict -Method Post -ContentType 'application/json' -Body '{"text":"jalan berlubang dan banyak sampah"}'
 ```
 
-- `GET /`: dashboard Streamlit.
-- `GET /health`: status JSON `{"status":"ok"}`.
-- `GET /docs`: petunjuk API HTML sederhana.
-- `GET /openapi.json`: skema OpenAPI.
+Untuk pengujian UI, jalankan `api-tester/app.py` dari proyek asal dan ganti URL
+endpoint ke deployment IndoBERT baru. Tester yang sama dapat dipakai karena
+kontrak request/response tetap sama. `/docs` menyediakan petunjuk HTML dan
+`/openapi.json` menyediakan skema API.
 
-`/docs` adalah halaman petunjuk, bukan Swagger UI FastAPI. Route `/predict`
-tetap mempertahankan bentuk request/response sukses aplikasi lama.
+## Profil CPU dan startup
 
-## Batas layanan gratis
+- Satu model dimuat saat startup dan dibagikan antara UI serta REST.
+- Satu inferensi aktif; request REST lain menunggu secara async.
+- Intra/inter-op ONNX satu thread, eksekusi sekuensial, tanpa spinning.
+- BLAS/OpenMP/tokenizer dibatasi satu thread. Affinity Linux memilih satu CPU
+  yang diizinkan sistem; `CPU_AFFINITY=0` menonaktifkannya. Windows hanya memakai
+  batas thread. Penolakan affinity dicatat dan tidak menggagalkan layanan.
+- Cache RAM maksimal 128 teks yang dinormalisasi; probabilitas dipakai ulang
+  saat threshold berubah. `PREDICTION_CACHE_SIZE=0` mematikan cache.
+- Dashboard menghitung prediksi hanya ketika form dikirim. Watcher file dan
+  telemetry dimatikan pada konfigurasi paket.
 
-Community Cloud memiliki batas CPU/memori tersendiri. Penggunaan HF CPU Basic
-tidak dihitung karena aplikasi ini dijalankan pada layanan Streamlit.
-Community Cloud bukan API yang dijamin selalu aktif: aplikasi tanpa trafik
-selama **12 jam** tidur. Pengguna mungkin perlu membuka halaman aplikasi dan
-menekan tombol untuk membangunkannya sebelum API tersedia kembali. Pemanggil
-harus menangani startup lambat dan respons non-JSON saat aplikasi belum siap.
-Lihat [hibernation dan resource limits](https://docs.streamlit.io/deploy/streamlit-community-cloud/manage-your-app).
+`MODEL_PATH` dapat menunjuk folder model lain yang memiliki format kompatibel.
+Model yang lebih besar ini membutuhkan lebih banyak memori dan waktu startup
+daripada TF-IDF. Community Cloud tetap memiliki resource limits dan hibernation
+setelah 12 jam tanpa trafik; respons saat app belum siap mungkin bukan JSON.
+[Batas Community Cloud](https://docs.streamlit.io/deploy/streamlit-community-cloud/manage-your-app).
 
-Profil aplikasi: satu inferensi aktif, satu thread BLAS/OpenMP, `n_jobs=1`,
-cache 128 teks, dan model dimuat sekali saat startup. Dashboard hanya menghitung
-prediksi saat form dikirim. Tidak ada keep-alive/polling yang sengaja mencegah
-hibernation. `CPU_AFFINITY=0` dapat menonaktifkan affinity Linux dan
-`PREDICTION_CACHE_SIZE=0` dapat mematikan cache.
+## Menjalankan lokal
 
-Paket siap diuji/deploy, tetapi belum diunggah ke akun GitHub/Streamlit pengguna.
-
-## Lokal tanpa Docker
-
-Python 3.12, dari folder paket:
+Dengan environment Streamlit proyek yang memiliki dependensi paket ini:
 
 ```powershell
-python -m venv .venv
-.\.venv\Scripts\python.exe -m pip install -r requirements.txt
-.\.venv\Scripts\python.exe -m streamlit run app.py
+.\.venv-streamlit\Scripts\python.exe -m pip install -r streamlit-indobert-api/requirements.txt
+.\.venv-streamlit\Scripts\python.exe -m streamlit run streamlit-indobert-api/app.py --server.port 8502
 ```
 
-Buka `http://localhost:8501/` atau uji `http://localhost:8501/predict`.
-Pada Linux gunakan `.venv/bin/python`. Gunakan satu proses aplikasi.
+Dashboard: `http://localhost:8502/`; API: `http://localhost:8502/predict`.
+Untuk environment baru, gunakan Python 3.12 dan install `requirements.txt` dari
+folder paket. Tidak perlu memasang dependency training atau scikit-learn.
 
-Untuk mengulang tes dari root proyek asal, install dependensi paket dan `httpx`,
-lalu jalankan pada environment terpisah dari tes Gradio/FastAPI:
+## Verifikasi dari root proyek asal
+
+Install dependency paket dan `httpx` pada environment pengujian, lalu jalankan
+masing-masing suite pada proses terpisah:
 
 ```powershell
-python -m unittest discover -s tests -p test_streamlit_api.py -v
-python tests/smoke_streamlit_cli.py
+python -m unittest discover -s tests -p test_streamlit_indobert_api.py -v
+python tests/smoke_streamlit_cli.py --space streamlit-indobert-api
 ```
+
+Paket disiapkan untuk deployment; belum diunggah atau dideploy ke akun pengguna.

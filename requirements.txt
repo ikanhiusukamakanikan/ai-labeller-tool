@@ -1,7 +1,8 @@
+# Select Python 3.12 in Community Cloud Advanced settings before deploying.
+# requirements.txt installs packages; it does not select the Cloud interpreter.
 streamlit==1.67.0
 pydantic==2.14.3
-scikit-learn==1.4.2
-joblib==1.3.2
+onnxruntime==1.31.1
+tokenizers==0.23.2
 numpy==1.26.4
-scipy==1.11.4
 threadpoolctl==3.5.0
